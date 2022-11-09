@@ -1,0 +1,80 @@
+---
+title: "p8105_hw5_ms6360"
+author: "Maisie Sun"
+date: "2022-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggridges)
+library(patchwork)
+library(readxl)
+
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## R Markdown
+
+```{r}
+homicide_data = 
+  read_csv("./data/homicide-data.csv") %>%
+  janitor::clean_names() %>%
+```
+
+This dataset contains `r nrow(homicide_data)` rows and `r ncol(homicide_data)` columns, which include variables `r colnames(homicide_data)`.
+
+```{r}
+homicide_data_p2 = 
+  homicide_data %>%
+  unite("city_state", city:state, remove = FALSE, sep = ",") %>%
+  group_by(city_state) %>%
+  count(disposition, name = "count") %>%
+  pivot_wider(
+    names_from = "disposition", 
+    values_from = "count") %>%
+    janitor::clean_names() %>%
+  replace(is.na(.), 0) %>%
+  mutate(
+    total = closed_by_arrest + closed_without_arrest + open_no_arrest,
+    unsolved = closed_without_arrest + open_no_arrest
+  )
+```
+
+
+```{r}
+prop.test(
+  homicide_data_p2 %>% filter(city_state == "Baltimore,MD") %>% pull(unsolved),
+  homicide_data_p2 %>% filter(city_state == "Baltimore,MD") %>% pull(total)) %>% 
+  broom::tidy()
+```
+
+```{r}
+prop_results = 
+  homicide_data_p2 %>% 
+  mutate(
+    tests = map2(.x = unsolved, .y = total, ~prop.test(x = .x, n = .y)),
+    broom = map(.x = prop_tests, ~broom::tidy(.x))
+  ) %>% 
+  select(-tests) %>% 
+  unnest(broom) %>% 
+  select(city_state, estimate, conf.low,conf.high)
+```
+
