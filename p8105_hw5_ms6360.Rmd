@@ -134,6 +134,8 @@ plot =
     x = "city and state",
     y = "proportion estimate and 95% confidence interval")
 
+plot
+
 ggsave("result/p2_proportion_plot.pdf", plot, width = 20, height = 10)
 ```
 
@@ -198,6 +200,8 @@ power_plot =
     y = "Power"
   )
 
+power_plot
+
 ggsave("result/p3_power_plot.pdf", power_plot, width = 20, height = 10)
 
 ```
@@ -235,6 +239,8 @@ reject_sample_estimate_plot =
     x = "True mean",
     y = "Mean estimate",
   )
+
+reject_sample_estimate_plot
 
 ggsave("result/p3_estimate_plot.pdf", reject_sample_estimate_plot, width = 20, height = 10)
 ```
