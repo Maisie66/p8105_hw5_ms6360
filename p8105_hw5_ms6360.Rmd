@@ -245,3 +245,10 @@ reject_sample_estimate_plot
 ggsave("result/p3_estimate_plot.pdf", reject_sample_estimate_plot, width = 20, height = 10)
 ```
 
+Overall, when the true value of mu is small, the sample averages of mu across tests for which the null is rejected are larger than the true value of mu (overestimation). As the true value of mu increases, the sample averages of mu across tests for which the null is rejected approaches the true value of mu. For when the true value of mu larger than 4, the mean estimate is really close to the true value of mu.
+
+This is because we are testing the null hypothesis of mu=0. With mu being 1, the effect size is really small, so with small power, it is expected that there will be less mean estimates rejecting the mean and they deviate from 1 a lot more than if mu is 6, which would have a larger effect size. 
+
+
+
+
