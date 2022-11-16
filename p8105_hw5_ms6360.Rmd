@@ -139,8 +139,9 @@ ggsave("result/p2_proportion_plot.pdf", plot, width = 20, height = 10)
 
 # Problem 3
 
-when mean = 0
-```{r}
+1 - Creating function for a t-test
+
+```{r ttest_function}
 ttest = function(mean, size=30, sigma = 5) {
   
   sim_data = tibble(
@@ -151,26 +152,28 @@ ttest = function(mean, size=30, sigma = 5) {
     broom::tidy() %>%
     select(estimate,p.value)
 }
+```
 
-ttest(0)
+2 - Simulating 5000 datasets when μ = 0
 
+```{r mu_0}
 expand_grid(
   means = 0,
-  iteration = 1:50
+  iteration = 1:5000
 ) %>%
   mutate(
     estimate_df = map(means, ttest)
   ) %>%
   unnest(estimate_df)
-
 ```
 
-when mean is 1,2,3,4,5
-```{r}
+3 - Simulating 5000 datasets when μ = 1, 2, 3, 4, 5, 6
+
+```{r mu_1to6}
 sim_results_df = 
   expand_grid(
     means = c(1, 2, 3, 4, 5, 6),
-    iter = 1:50
+    iter = 1:5000
   ) %>% 
   mutate(
     estimate_df = map(means, ttest)
@@ -178,8 +181,9 @@ sim_results_df =
   unnest(estimate_df)
 ```
 
-plot 1
-```{r}
+4 - Creating a plot looking at the power of the t-test for each true mean value
+
+```{r plot_power_p3}
 power_plot = 
   sim_results_df %>%
   group_by(means) %>%
@@ -194,10 +198,13 @@ power_plot =
     y = "Power"
   )
 
+ggsave("result/p3_power_plot.pdf", power_plot, width = 20, height = 10)
+
 ```
 
-plot 2
-```{r}
+5 - Creating mean estimate for every true mean value
+
+```{r mean_estimate_all_sample}
 estimate_plot = 
   sim_results_df %>%
   group_by(means) %>%
@@ -206,28 +213,29 @@ estimate_plot =
   )
 ```
 
-plot 3
-```{r}
-reject_estimate_plot = 
+6 - Creating overlay plot with mean estimate for every true mean value for all samples and for samples for which the null was rejected only
+
+```{r overlay_plot}
+reject_sample_estimate_plot = 
   sim_results_df %>%
   filter(p.value < 0.05) %>%
   group_by(means) %>%
   summarize(
     estimate_mean = mean(estimate)
   ) %>%
-  ggplot(aes(x = means, y = estimate_mean, color = "rejected sample")) + 
+  ggplot(aes(x = means, y = estimate_mean, color = "sample with rejected null")) + 
     geom_point() + 
   geom_point(data = estimate_plot, aes(color = "all sample")) +
   scale_color_manual(
     name = "Legend",
-    breaks = c("rejected sample", "all sample"),
-    values = c("rejected sample" = "red", "all sample" = "black")) +
+    breaks = c("sample with rejected null", "all sample"),
+    values = c("sample with rejected null" = "red", "all sample" = "black")) +
   labs(
     title = "Mean estimate for each true mean value comparing samples for which the null was rejected and for all samples",
     x = "True mean",
     y = "Mean estimate",
   )
 
-
+ggsave("result/p3_estimate_plot.pdf", reject_sample_estimate_plot, width = 20, height = 10)
 ```
 
