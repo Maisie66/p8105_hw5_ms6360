@@ -188,7 +188,7 @@ power_plot =
   sim_results_df %>%
   group_by(means) %>%
   summarize(
-    proportion = sum(p.value < 0.05, na.rm = TRUE)/50
+    proportion = sum(p.value < 0.05, na.rm = TRUE)/5000
   ) %>%
   ggplot(aes(x = means, y = proportion)) + 
     geom_point() + 
