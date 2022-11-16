@@ -31,17 +31,61 @@ scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
 
-## R Markdown
+# Problem 1
 
-```{r}
-homicide_data = 
-  read_csv("./data/homicide-data.csv") %>%
-  janitor::clean_names() %>%
+```{r import_data_p1}
+data = 
+  tibble(
+    files = list.files(
+      path = "./data/data/", all.files = TRUE,
+      full.names = FALSE, recursive = TRUE,
+      ignore.case = FALSE, include.dirs = TRUE, no.. = FALSE),
+    path = str_c("data/data/", files)
+    ) %>%
+  mutate(results = map(path, read_csv)) %>% 
+  unnest()
+
 ```
 
-This dataset contains `r nrow(homicide_data)` rows and `r ncol(homicide_data)` columns, which include variables `r colnames(homicide_data)`.
+## Tidy Data
 
-```{r}
+```{r tidy_data_p1}
+data_tidy = 
+  data %>%
+  separate(files, into = c("status", "ID"), sep = "_") %>%
+  mutate(
+    ID = str_replace(ID, ".csv", "") 
+  ) %>%
+  select(-path) %>%
+  pivot_longer(
+    week_1:week_8,
+    names_to = "week",
+    values_to = "outcome",
+    names_prefix = "week_") %>%
+  mutate(week = as.numeric(week))
+```
+
+## Making a plot
+
+```{r plot_p1}
+data_tidy %>% 
+  ggplot(aes(x = week, y = outcome, color = status)) + 
+  geom_point() + 
+  geom_path() + 
+  facet_grid(~status)
+```
+
+# Problem 2
+
+```{r import_data_p2}
+homicide_data = 
+  read_csv("./data/homicide-data.csv") %>%
+  janitor::clean_names()
+```
+
+This raw dataset contains `r nrow(homicide_data)` rows and `r ncol(homicide_data)` columns, which include variables `r colnames(homicide_data)`. This dataset reports homicide cases which include victim information, date, location, and the type of case (disposition), which will be a variable of interest in the later parts. 
+
+```{r clean_data_p2}
 homicide_data_p2 = 
   homicide_data %>%
   unite("city_state", city:state, remove = FALSE, sep = ",") %>%
@@ -51,6 +95,7 @@ homicide_data_p2 =
     names_from = "disposition", 
     values_from = "count") %>%
     janitor::clean_names() %>%
+  drop_na(open_no_arrest) %>%
   replace(is.na(.), 0) %>%
   mutate(
     total = closed_by_arrest + closed_without_arrest + open_no_arrest,
@@ -58,23 +103,131 @@ homicide_data_p2 =
   )
 ```
 
-
-```{r}
+```{r proptest_Baltimore}
 prop.test(
   homicide_data_p2 %>% filter(city_state == "Baltimore,MD") %>% pull(unsolved),
   homicide_data_p2 %>% filter(city_state == "Baltimore,MD") %>% pull(total)) %>% 
   broom::tidy()
 ```
 
-```{r}
+```{r proptest_allstates}
 prop_results = 
   homicide_data_p2 %>% 
   mutate(
     tests = map2(.x = unsolved, .y = total, ~prop.test(x = .x, n = .y)),
-    broom = map(.x = prop_tests, ~broom::tidy(.x))
+    broom = map(.x = tests, ~broom::tidy(.x))
   ) %>% 
   select(-tests) %>% 
   unnest(broom) %>% 
-  select(city_state, estimate, conf.low,conf.high)
+  select(city_state, estimate, starts_with("conf"))
+```
+
+```{r plot_p2}
+plot = 
+  prop_results %>% 
+  ggplot(aes(x = fct_reorder(city_state, estimate), y = estimate)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + 
+  labs(
+    title = "Proportion estimate of unsolved cases based on city and states ordered basd on estimates",
+    x = "city and state",
+    y = "proportion estimate and 95% confidence interval")
+
+ggsave("result/p2_proportion_plot.pdf", plot, width = 20, height = 10)
+```
+
+# Problem 3
+
+when mean = 0
+```{r}
+ttest = function(mean, size=30, sigma = 5) {
+  
+  sim_data = tibble(
+    x = rnorm(n = size, mean, sd = sigma),
+  )
+  
+    t.test(sim_data) %>%
+    broom::tidy() %>%
+    select(estimate,p.value)
+}
+
+ttest(0)
+
+expand_grid(
+  means = 0,
+  iteration = 1:50
+) %>%
+  mutate(
+    estimate_df = map(means, ttest)
+  ) %>%
+  unnest(estimate_df)
+
+```
+
+when mean is 1,2,3,4,5
+```{r}
+sim_results_df = 
+  expand_grid(
+    means = c(1, 2, 3, 4, 5, 6),
+    iter = 1:50
+  ) %>% 
+  mutate(
+    estimate_df = map(means, ttest)
+  ) %>%
+  unnest(estimate_df)
+```
+
+plot 1
+```{r}
+power_plot = 
+  sim_results_df %>%
+  group_by(means) %>%
+  summarize(
+    proportion = sum(p.value < 0.05, na.rm = TRUE)/50
+  ) %>%
+  ggplot(aes(x = means, y = proportion)) + 
+    geom_point() + 
+  labs(
+    title = "Power of t-test for each true mean value",
+    x = "True mean",
+    y = "Power"
+  )
+
+```
+
+plot 2
+```{r}
+estimate_plot = 
+  sim_results_df %>%
+  group_by(means) %>%
+  summarize(
+    estimate_mean = mean(estimate)
+  )
+```
+
+plot 3
+```{r}
+reject_estimate_plot = 
+  sim_results_df %>%
+  filter(p.value < 0.05) %>%
+  group_by(means) %>%
+  summarize(
+    estimate_mean = mean(estimate)
+  ) %>%
+  ggplot(aes(x = means, y = estimate_mean, color = "rejected sample")) + 
+    geom_point() + 
+  geom_point(data = estimate_plot, aes(color = "all sample")) +
+  scale_color_manual(
+    name = "Legend",
+    breaks = c("rejected sample", "all sample"),
+    values = c("rejected sample" = "red", "all sample" = "black")) +
+  labs(
+    title = "Mean estimate for each true mean value comparing samples for which the null was rejected and for all samples",
+    x = "True mean",
+    y = "Mean estimate",
+  )
+
+
 ```
 
