@@ -206,6 +206,9 @@ ggsave("result/p3_power_plot.pdf", power_plot, width = 20, height = 10)
 
 ```
 
+With a true mean being small and close to 0, which is the null hypothesis (H0: mu = 0), the effect size is small, which we can expect the power to be small as well. As the true mean increases and gets further from 0, the effect size increases and power also increases. When the true mean is greater or equal to 4, the power is close to 1.
+
+
 5 - Creating mean estimate for every true mean value
 
 ```{r mean_estimate_all_sample}
